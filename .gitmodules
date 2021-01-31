@@ -1,0 +1,12 @@
+[submodule "python_emailer"]
+	path = python_emailer
+	url = git@github.com:almliden/Python-Emailer.git
+	branch = main
+[submodule "python_pymongodb_connector"]
+	path = python_pymongodb_connector
+	url = git@github.com:almliden/Python-PyMongoDB-Connector.git
+	branch = main
+[submodule "python_fitbit"]
+	path = python_fitbit
+	url = git@github.com:almliden/python-fitbit.git
+	branch = release/production
