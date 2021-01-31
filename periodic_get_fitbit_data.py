@@ -4,10 +4,10 @@ import time
 import sys
 import os
 import fitbit
-from python_pymongodn_connector.database_connector import DatabaseConnector, DatabaseConfigurator
+from python_pymongodb_connector.database_connector import DatabaseConnector, DatabaseConfigurator
 from bson.json_util import dumps, loads
 from sender import EmailSender
-from fitBitClient import AuthorizedFitbitClient, ApiClient
+from fitbit_client import AuthorizedFitbitClient, ApiClient
 import helper_functions
 
 # Initialize

@@ -3,7 +3,6 @@ import datetime
 import time
 import sys
 import os
-from Python_PyMongoDB_Connector.database_connector import DatabaseConnector, DatabaseConfigurator
 from bson.json_util import dumps, loads
 import pandas as pd
 import matplotlib

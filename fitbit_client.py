@@ -1,6 +1,6 @@
 import datetime
 import time
-import fitbit
+from python_fitbit import fitbit
 from bson.json_util import dumps, loads
 
 class AuthorizedFitbitClient:

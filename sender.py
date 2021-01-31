@@ -1,6 +1,6 @@
-from Python_Emailer.emailAdapter import EmailAdapter, EmailAdapterConfig, EmailAdapterConfigurator
+from python_emailer.emailAdapter import EmailAdapter, EmailAdapterConfig, EmailAdapterConfigurator
 from datetime import date, datetime, timedelta
-from Python_PyMongoDB_Connector.database_connector import DatabaseConnector, DatabaseConfigurator
+from python_pymongodb_connector.database_connector import DatabaseConnector, DatabaseConfigurator
 from plotter import Plotter, PlotterConfig
 from bson.json_util import dumps, loads
 import configparser
