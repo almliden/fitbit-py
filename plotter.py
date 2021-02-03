@@ -13,6 +13,7 @@ import helper_functions
 import io
 import requests
 import base64
+from python_pymongodb_connector.database_connector import DatabaseConnector, DatabaseConfigurator
 
 class PlotterConfig:
   api_url:str = ''
@@ -35,7 +36,40 @@ class Plotter:
       else:
         vals.append({'time': s['time'], 'heart': h['value'], 'steps': s['value']})
     return vals
-  
+
+  def plot_kde(self, heart_series,  path_to_save, save_file=False, show_graph=False, upload=False):
+    if (save_file or upload):
+      matplotlib.use('Agg')
+    matplotlib.style.use('ggplot')
+
+    vals = []
+    for kvp in heart_series:
+      vals.append(kvp['value'])
+
+    combined = pd.DataFrame(data=vals)
+    combined.plot.kde()
+    
+    if (save_file == True or show_graph == True):
+      plt.show()
+    
+    if (save_file == True):
+      file_path = '{path}.png'.format(path = path_to_save)
+      plt.savefig(file_path, transparent=True, bbox_inches='tight')
+      return file_path
+
+    if (show_graph == True):
+      return ''
+
+    if (upload == True):
+      fig1 = plt.gcf()
+      plt.show()
+      plt.draw()
+      img_data = io.BytesIO()
+      fig1.savefig(img_data, transparent=True, bbox_inches='tight', format='png')
+      img_data.seek(0)
+      base64_bytes = base64.b64encode(img_data.getvalue())
+      return self._upload_image(base64_bytes)
+
   def plot_sleep(self, sleep_summary, path_to_save, save_file=False, show_graph=False, upload=False):
     if (save_file or upload):
       matplotlib.use('Agg')
@@ -65,7 +99,6 @@ class Plotter:
       img_data.seek(0)
       base64_bytes = base64.b64encode(img_data.getvalue())
       return self._upload_image(base64_bytes)
-
 
   def plot_heart_steps(self, step_series, heart_series, path_to_save, save_file=False, show_graph=False, upload=False):
     if (save_file == show_graph and save_file == upload ):
@@ -156,7 +189,7 @@ class Plotter:
     return values[round(len(values) / 2)]
 
 def main():
-  database_context = DatabaseConnection(DatabaseConfigurator('config.ini').Config())
+  database_context = DatabaseConnector(DatabaseConfigurator('config.ini').Config())
   database = database_context.connect()
 
   parser=configparser.ConfigParser()
@@ -168,34 +201,48 @@ def main():
   conf = PlotterConfig()
   conf.api_key = IMAGE_API_KEY
   conf.api_url = IMAGE_API_URL+'?expiration=36000'
-  plotter = Plotter(conf)
+  #Unused!
+  #plotter = Plotter(conf)
 
   show_graph=False
   save_file=True
   upload=False
+  search_date = datetime.date.today() - datetime.timedelta(days=1)
 
   ## Heart Steps
-  search_date = datetime.date.today() - datetime.timedelta(days=1)
-  yesterdate_steps = database.steps.find_one({'activities-steps.dateTime' : search_date.isoformat() })
-  time_series_steps = yesterdate_steps['activities-steps-intraday']['dataset']
-  yesterdate_heart = database.heart.find_one({'activities-heart.dateTime' : search_date.isoformat() })
-  time_series_heart = yesterdate_heart['activities-heart-intraday']['dataset']
-  raw_response = plotter.plot_heart_steps(time_series_steps, time_series_heart, helper_functions.file_friendly_time_stamp()+'_heart',show_graph=show_graph, save_file=save_file, upload=upload)
-  if (upload):
-    response = loads(raw_response)
-    inserted = database.bb_images.insert_one({ helper_functions.file_friendly_time_stamp()+'_heart' : response })
-    if (not inserted.acknowledged):
-      print("Problem writing to database.")
-  elif (save_file):
-    print('File saved! Name: ' + raw_response)
+  # yesterdate_steps = database.steps.find_one({'activities-steps.dateTime' : search_date.isoformat() })
+  # time_series_steps = yesterdate_steps['activities-steps-intraday']['dataset']
+  # yesterdate_heart = database.heart.find_one({'activities-heart.dateTime' : search_date.isoformat() })
+  # time_series_heart = yesterdate_heart['activities-heart-intraday']['dataset']
+  # raw_response = plotter.plot_heart_steps(time_series_steps, time_series_heart, helper_functions.file_friendly_time_stamp()+'_heart',show_graph=show_graph, save_file=save_file, upload=upload)
+  # if (upload):
+  #   response = loads(raw_response)
+  #   inserted = database.bb_images.insert_one({ helper_functions.file_friendly_time_stamp()+'_heart' : response })
+  #   if (not inserted.acknowledged):
+  #     print("Problem writing to database.")
+  # elif (save_file):
+  #   print('File saved! Name: ' + raw_response)
 
   ## Sleep Pie
-  sleep_plotter = Plotter(conf)
-  sleep_series = database.sleep.find_one({'sleep.dateOfSleep':  datetime.date.today().isoformat() })
-  raw_response = sleep_plotter.plot_sleep(sleep_series['summary'], helper_functions.file_friendly_time_stamp()+'_sleep_pie',show_graph=show_graph, save_file=save_file, upload=upload)
+  # sleep_plotter = Plotter(conf)
+  # sleep_series = database.sleep.find_one({'sleep.dateOfSleep':  datetime.date.today().isoformat() })
+  # raw_response = sleep_plotter.plot_sleep(sleep_series['summary'], helper_functions.file_friendly_time_stamp()+'_sleep_pie',show_graph=show_graph, save_file=save_file, upload=upload)
+  # if (upload):
+  #   response = loads(raw_response)
+  #   inserted = database.bb_images.insert_one({ helper_functions.file_friendly_time_stamp()+'_heart' : response })
+  #   if (not inserted.acknowledged):
+  #     print("Problem writing to database.")
+  # elif (save_file):
+  #   print('File saved! Name: ' + raw_response)
+
+  ## Heart rate distribution
+  heart_rate_plotter = Plotter(conf)
+  yesterdate_heart = database.heart.find_one({'activities-heart.dateTime' : search_date.isoformat() })
+  time_series_heart = yesterdate_heart['activities-heart-intraday']['dataset']
+  raw_response = heart_rate_plotter.plot_kde(time_series_heart, helper_functions.file_friendly_time_stamp()+'_heart_rate_distribution',show_graph=show_graph, save_file=save_file, upload=upload)
   if (upload):
     response = loads(raw_response)
-    inserted = database.bb_images.insert_one({ helper_functions.file_friendly_time_stamp()+'_heart' : response })
+    inserted = database.bb_images.insert_one({ helper_functions.file_friendly_time_stamp()+'_heart_rate_distribution' : response })
     if (not inserted.acknowledged):
       print("Problem writing to database.")
   elif (save_file):

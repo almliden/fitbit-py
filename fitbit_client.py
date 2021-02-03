@@ -2,6 +2,7 @@ import datetime
 import time
 from python_fitbit import fitbit
 from bson.json_util import dumps, loads
+from oauthlib.oauth2 import rfc6749
 
 class AuthorizedFitbitClient:
   def __init__(self, database):
@@ -32,11 +33,18 @@ class AuthorizedFitbitClient:
         return auth2_client
       except (TypeError) as e:
         print('Catched error: %s. \n This is probably related to the user not present in the db' % (e))
+      except (rfc6749.errors.TokenExpiredError):
+        print('Token expired!')
+      except (rfc6749.errors.InvalidGrantError):
+        print('Invalid grant!')
+        # gather_keys_oauth2.OAuth2Server(client_id, client_secret, redirect_uri='https://localhost')
+        # Also start a server and listen for callbacks, and save into db? how to do this as a service user?
+        # Install cherrypy on server
     else:
       raise Exception( ('User does not exist: %s' % self.user_name))
 
 class ApiClient:
-  def __init__(self, authorized_client: AuthorizedFitbitClient, database, logging_enabled=False):
+  def __init__(self, authorized_client, database, logging_enabled=False):
     self.authorized_client = authorized_client
     self.database = database
     self.logging = logging_enabled
@@ -98,6 +106,9 @@ class ApiClient:
         if (self.logging): print('Should update sleep')
         self.update(collection=name, find={'sleep.dateOfSleep': date.isoformat()}, update={'$set':  time_series_api} )
       elif (self.logging): print('Already saved latest sleep %s' % date)
+    elif (time_series_api != None and time_series_db == None):
+      if (self.logging): print('Save new data {name} {date}'.format(name = name, date = date))
+      self.save(time_series=time_series_api, check=name, collection=name)
 
   def save_heart(self, date:str):
     self.fetch_and_save_intraday(date, collection='heart', search={ 'KEY': 'activities-heart.dateTime', 'VALUE': date }, endpoint = 'activities/heart', detail_level='1sec', check='activities-heart')

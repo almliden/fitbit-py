@@ -55,14 +55,15 @@ class EmailSender:
       yesterdate = date.today() - timedelta(days=1)
       email_parts['steps'] = self.add_steps(yesterdate)
       email_parts['most_active_hour'] = self.add_most_active_hour(yesterdate)
-      email_parts['resting_heartrate'] = self.add_heartrate(yesterdate)
       email_parts['heart_steps'] = self.add_heart_steps(yesterdate)
       email_parts['tip_of_the_day'] = self.add_tip_of_the_day()
+      email_parts['resting_heartrate'] = self.add_heartrate(yesterdate)
+      email_parts['heartrate_distribution'] = self.add_heartrate_distribution(yesterdate)
       email_parts['distance'] = self.add_distance(yesterdate)
       email_parts['meditate_nudge'] = self.add_meditate()
-      email_parts['sleepStatsYesterDay'] = self.add_yesterday_sleep(yesterdate)
-      email_parts['sleepPieYesterday'] = self.add_yesterday_sleep_graph(yesterdate)
-      email_parts['batteryLevel'] = self.add_battery_level(last_sync_time['batteryLevel'], last_sync_time['lastSyncTime'][0:19])
+      email_parts['sleep_stats_yesterDay'] = self.add_yesterday_sleep(yesterdate)
+      email_parts['sleep_pie_yesterday'] = self.add_yesterday_sleep_graph(yesterdate)
+      email_parts['battery_level'] = self.add_battery_level(last_sync_time['batteryLevel'], last_sync_time['lastSyncTime'][0:19])
       sent_at = datetime.now().isoformat()
       self.send(email_parts)
       self.confirm_email_sent(queued_at, sent_at)
@@ -163,6 +164,30 @@ class EmailSender:
       del plotter
     except (Exception) as e:
       print('Something went wrong in def add_heart_steps')
+      return self.add_debug_message('Image issue', 'Tried adding image. Stumbled upon this error: ' + str(e))
+
+  def add_heartrate_distribution(self, search_date:date):
+    try:
+      plotter_config = PlotterConfig()
+      plotter_config.api_key = self.image_api_key
+      plotter_config.api_url = self.image_api_url
+      plotter = Plotter(plotter_config)
+
+      yesterdate_heart = self.database.heart.find_one({'activities-heart.dateTime' : search_date.isoformat() })
+      time_series_heart = yesterdate_heart['activities-heart-intraday']['dataset']
+
+      response = plotter.plot_kde(time_series_heart, helper_functions.file_friendly_time_stamp()+'_heartrate_distribution', show_graph=False, save_file=False, upload=True)
+      data = loads(response)
+      self.database.bb_images.insert_one({ helper_functions.file_friendly_time_stamp()+'_heartrate_distribution' : data })
+      image_url = data['data']['display_url']
+
+      if (image_url != None):
+        with open('{folderPath}/heartrate_distribution.html'.format(folderPath=self.template_folder), 'r', -1) as fopen:
+          return fopen.read().format(image_url = image_url, image_alt_text = 'Distribution of heart rate', section_header = 'Heart rate distribution')
+          
+      del plotter
+    except (Exception) as e:
+      print('Something went wrong in def add_heartrate_distribution')
       return self.add_debug_message('Image issue', 'Tried adding image. Stumbled upon this error: ' + str(e))
 
   def add_yesterday_sleep_graph(self, search_date: date):
